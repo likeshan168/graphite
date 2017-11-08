@@ -19,7 +19,7 @@ namespace Graphite.Extensions
         public static string ReadToEnd(this Stream stream, Encoding encoding)
         {
             if (stream == null) return null;
-            using (var reader = new System.IO.StreamReader(stream, encoding))
+            using (var reader = new StreamReader(stream, encoding))
             {
                 return reader.ReadToEnd();
             }
@@ -30,6 +30,20 @@ namespace Graphite.Extensions
             return bufferSize.HasValue
                 ? new StreamWriter(stream, encoding, bufferSize.Value)
                 : new StreamWriter(stream, encoding);
+        }
+
+        public static async Task<byte[]> ReadAsByteArray(this Task<Stream> stream)
+        {
+            using (var buffer = new MemoryStream())
+            {
+                (await stream).CopyTo(buffer);
+                return buffer.ToArray();
+            }
+        }
+
+        public static async Task<string> ReadAsString(this Task<Stream> stream, Encoding encoding = null)
+        {
+            return new StreamReader(await stream, encoding ?? Encoding.UTF8).ReadToEnd();
         }
     }
 }
