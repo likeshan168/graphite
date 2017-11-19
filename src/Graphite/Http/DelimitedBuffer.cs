@@ -25,11 +25,18 @@ namespace Graphite.Http
             _stream = stream;
         }
 
+        public bool BeginingOfStream { get; private set; } = true;
+
         public bool StartsWith(byte[] compare)
         {
             if (_size < compare.Length) Fill();
 
             return _buffer.ContainsAt(compare, _offset);
+        }
+
+        public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
+        {
+            throw new NotImplementedException();
         }
 
         public ReadResult ReadTo(byte[] delimiter)
@@ -46,22 +53,41 @@ namespace Graphite.Http
 
         public class ReadResult
         {
-            public ReadResult(int read, bool endOfSection, bool endOfStream)
+            public ReadResult(int read, bool endOfSection, bool endOfStream, 
+                bool error = false, string errorMessage = null)
             {
                 Read = read;
                 EndOfSection = endOfSection;
                 EndOfStream = endOfStream;
+                Error = error;
+                ErrorMessage = errorMessage;
             }
 
             public int Read { get; }
             public bool EndOfSection { get; }
             public bool EndOfStream { get; }
+            public bool Error { get; }
+            public string ErrorMessage { get; }
+        }
+
+        public ReadResult Read(byte[] buffer, int offset, int count,
+            params byte[][] invalidTokens)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ReadResult ReadTo(byte[] buffer, int offset, int count, 
+            byte[] delimiter, params byte[][] invalidTokens)
+        {
+            throw new NotImplementedException();
         }
 
         public ReadResult ReadTo(byte[] buffer, int offset, int count, byte[] delimiter)
         {
             if (offset < 0) throw new ArgumentException($"Offset must be greater than zero but was {offset}.");
             if (count < 1) throw new ArgumentException($"Count must be greater than 1 but was {count}.");
+
+            BeginingOfStream = false;
 
             if (delimiter == null || delimiter.Length == 0)
                 return new ReadResult(0, false, _end);

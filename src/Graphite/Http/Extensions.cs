@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Web;
 using Graphite.Extensions;
 
@@ -56,7 +57,7 @@ namespace Graphite.Http
 
         public static IList<KeyValuePair<string, string>> ParseHeaders(this string headers)
         {
-            headers = headers.Trim();
+            headers = headers?.Trim();
             if (headers.IsNullOrEmpty()) return Enumerable
                 .Empty<KeyValuePair<string, string>>().ToList();
             return headers.Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
@@ -78,9 +79,9 @@ namespace Graphite.Http
                 .Where(x => x != "").ToList();
         }
 
-        public static string GetContentBoundry(this HttpContent content)
+        public static string GetContentBoundry(this HttpContentHeaders headers)
         {
-            return content.Headers.ContentType.Parameters
+            return headers.ContentType.Parameters
                 .Where(x => x.Name.EqualsUncase("boundary"))
                 .Select(x => x.Value.Unquote())
                 .FirstOrDefault();

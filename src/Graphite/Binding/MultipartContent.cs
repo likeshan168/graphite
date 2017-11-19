@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using Graphite.Http;
 
 namespace Graphite.Binding
@@ -12,9 +12,9 @@ namespace Graphite.Binding
         private MultipartPartContent _peeked;
         private IEnumerator<InputStream> _enumerator;
 
-        public MultipartContent(Stream stream, HttpContent content, Configuration configuration)
+        public MultipartContent(Stream stream, HttpContentHeaders headers, Configuration configuration)
         {
-            _reader = new MultipartReader(stream, content, configuration.DefaultBufferSize);
+            _reader = new MultipartReader(stream, headers, configuration.DefaultBufferSize);
         }
 
         public MultipartPartContent Pop()

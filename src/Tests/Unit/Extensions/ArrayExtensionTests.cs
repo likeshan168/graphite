@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Text;
 using Graphite.Extensions;
 using NUnit.Framework;
 using Should;
+using Tests.Common;
 
 namespace Tests.Unit.Extensions
 {
@@ -54,25 +56,31 @@ namespace Tests.Unit.Extensions
         [Test]
         public void Should_copy_array()
         {
-            throw new NotImplementedException();
+            var source = "fark".ToBytes();
+            source.Copy(4).ShouldOnlyContain(source);
         }
 
-        [Test]
-        public void Should_ensure_array_value()
+        [TestCase(null, "fark", "fark")]
+        [TestCase("farker", "fark", "farker")]
+        public void Should_ensure_array_value(string existing, string @default, string expected)
         {
-            throw new NotImplementedException();
+            var values = new [] { existing };
+            var result = values.EnsureValue(0, () => @default);
+
+            result.ShouldEqual(expected);
+            values[0].ShouldEqual(expected);
         }
 
         [Test]
         public void Should_convert_byte_array_to_string()
         {
-            throw new NotImplementedException();
+            Encoding.UTF8.GetBytes("fark").ToString(4).ShouldEqual("fark");
         }
 
         [Test]
         public void Should_convert_string_to_byte_array()
         {
-            throw new NotImplementedException();
+            "fark".ToBytes().ShouldOnlyContain(Encoding.UTF8.GetBytes("fark"));
         }
     }
 }

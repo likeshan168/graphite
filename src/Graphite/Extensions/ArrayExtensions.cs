@@ -38,10 +38,15 @@ namespace Graphite.Extensions
 
         public static string ToString(this byte[] source, int count, Encoding encoding = null)
         {
+            return source.ToString(0, count, encoding);
+        }
+
+        public static string ToString(this byte[] source, int offset, int count, Encoding encoding = null)
+        {
             return source == null
                 ? null
                 : (encoding ?? Encoding.UTF8)
-                    .GetString(source, 0, count);
+                .GetString(source, offset, count);
         }
 
         public static ArrayItem<T> GetItem<T>(this T[] source, int index)

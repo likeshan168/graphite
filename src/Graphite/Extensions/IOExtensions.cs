@@ -25,7 +25,8 @@ namespace Graphite.Extensions
             }
         }
 
-        public static StreamWriter CreateWriter(this Stream stream, Encoding encoding, int? bufferSize)
+        public static StreamWriter CreateWriter(this Stream stream, 
+            Encoding encoding, int? bufferSize)
         {
             return bufferSize.HasValue
                 ? new StreamWriter(stream, encoding, bufferSize.Value)
@@ -41,9 +42,10 @@ namespace Graphite.Extensions
             }
         }
 
-        public static async Task<string> ReadAsString(this Task<Stream> stream, Encoding encoding = null)
+        public static async Task<string> ReadAsString(
+            this Task<Stream> stream, Encoding encoding = null)
         {
-            return new StreamReader(await stream, encoding ?? Encoding.UTF8).ReadToEnd();
+            return (await stream).ReadToEnd(encoding ?? Encoding.UTF8);
         }
     }
 }

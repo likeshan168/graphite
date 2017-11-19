@@ -17,11 +17,11 @@ namespace Tests.Unit.Http
         {
             var results = ReadAll(
                 "some preamble\r\n" +
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "content-type: text/plain\r\n" +
                 "\r\n" +
                 "some text\r\n" +
-                "--some-boundry--\r\n" +
+                "--some-boundary--\r\n" +
                 "some epilogue");
 
             Should_match_section(results[0], "some preamble", MultipartSection.Preamble, true, false);
@@ -36,24 +36,24 @@ namespace Tests.Unit.Http
         public void Should_read_part_with_no_headers()
         {
             var results = ReadAll(
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "\r\n" +
                 "some text\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "some text", MultipartSection.Body, true, false);
             Should_match_section(results[2], "", MultipartSection.Epilogue, true, true);
         }
-
+        
         [Test]
         public void Should_read_part_with_no_headers_or_body()
         {
             var results = ReadAll(
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "\r\n" +
                 "\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "", MultipartSection.Body, true, false);
@@ -61,18 +61,18 @@ namespace Tests.Unit.Http
         }
 
         [Test]
-        public void Should_read_multiple_parts_with_no_headers()
+        public void Should_read_multiple_parts_with_headers()
         {
             var results = ReadAll(
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "content-type: text/plain\r\n" +
                 "\r\n" +
                 "some text 1\r\n" +
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "content-type: text/plain\r\n" +
                 "\r\n" +
                 "some text 2\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
 
@@ -92,9 +92,9 @@ namespace Tests.Unit.Http
         public void Should_read_empty_part([Values("", "\r\n")] string prefix)
         {
             var results = ReadAll(
-                $"{prefix}--some-boundry\r\n" +
+                $"{prefix}--some-boundary\r\n" +
                 "\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "", MultipartSection.Body, true, false);
@@ -105,12 +105,12 @@ namespace Tests.Unit.Http
         public void Should_read_boundary_with_missing_leading_crlf()
         {
             var results = ReadAll(
-                "--some-boundry\r\n" +
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
+                "--some-boundary\r\n" +
                 "content-type: text/plain\r\n" +
                 "\r\n" +
                 "some text 2\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             
@@ -125,25 +125,24 @@ namespace Tests.Unit.Http
         }
 
         [Test]
-        public void Should_read_epilogue_missing_leading_crlf([Values("", "\r\n")] string prefix)
+        public void Should_read_epilogue_missing_leading_crlf()
         {
             var results = ReadAll(
-                $"{prefix}--some-boundry\r\n" +
-                "--some-boundry--");
+                "--some-boundary" +
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
-            Should_match_section(results[1], "", MultipartSection.Body, true, false);
-            Should_match_section(results[2], "", MultipartSection.Epilogue, true, true);
+            Should_match_section(results[1], "", MultipartSection.Epilogue, true, true);
         }
 
         [Test]
         public void Should_read_boundary_with_trailing_linear_whitespace()
         {
             var results = ReadAll(
-                "--some-boundry \t\r \t\n\r\n" +
+                "--some-boundary \t\r \t\n\r\n" +
                 "\r\n" +
                 "some text\r\n" +
-                "--some-boundry--");
+                "--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "some text", MultipartSection.Body, true, false);
@@ -151,18 +150,18 @@ namespace Tests.Unit.Http
         }
 
         [Test]
-        public void Should_read_epilogue_only_boundry([Values("", "\r\n")] string prefix)
+        public void Should_read_epilogue_only_boundary([Values("", "\r\n")] string prefix)
         {
-            var results = ReadAll($"{prefix}--some-boundry--");
+            var results = ReadAll($"{prefix}--some-boundary--");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "", MultipartSection.Epilogue, true, true);
         }
 
         [Test]
-        public void Should_read_boundry_only([Values("", "\r\n")] string prefix)
+        public void Should_read_boundary_only([Values("", "\r\n")] string prefix)
         {
-            var results = ReadAll($"{prefix}--some-boundry");
+            var results = ReadAll($"{prefix}--some-boundary");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], "", MultipartSection.Epilogue, true, true);
@@ -172,19 +171,12 @@ namespace Tests.Unit.Http
         public void Should_read_part_with_no_epilogue([Values("", "\r\n")] string postfix)
         {
             var results = ReadAll(
-                "--some-boundry\r\n" +
+                "--some-boundary\r\n" +
                 "\r\n" +
                 $"some text{postfix}");
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
             Should_match_section(results[1], $"some text{postfix}", MultipartSection.Body, true, true);
-        }
-
-        [Test]
-        public void Should_()
-        {
-            // TODO: add tests for changes...
-            throw new NotImplementedException();
         }
 
         private void Should_match_section(ReadResult result,
@@ -208,8 +200,9 @@ namespace Tests.Unit.Http
         {
             var content = new StringContent(source);
             content.Headers.ContentType.Parameters.Add(
-                new NameValueHeaderValue("boundary", "some-boundry"));
-            var reader =  new MultipartReader(content.ReadAsStreamAsync().Result, content, 30);
+                new NameValueHeaderValue("boundary", "some-boundary"));
+            var reader =  new MultipartReader(content.ReadAsStreamAsync()
+                .Result, content.Headers, 30);
             var results = new List<ReadResult>();
             var buffer = new byte[20];
 

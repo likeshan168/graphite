@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
+using Graphite.Extensions;
 using NUnit.Framework;
+using Should;
 
 namespace Tests.Unit.Extensions
 {
@@ -13,13 +11,15 @@ namespace Tests.Unit.Extensions
         [Test]
         public void Should_read_stream_as_byte_array()
         {
-            throw new NotImplementedException();
+            new MemoryStream("fark".ToBytes()).ToTaskResult<Stream>()
+                .ReadAsByteArray().Result.ToString(4).ShouldEqual("fark");
         }
 
         [Test]
         public void Should_read_stream_as_string()
         {
-            throw new NotImplementedException();
+            new MemoryStream("fark".ToBytes()).ToTaskResult<Stream>()
+                .ReadAsString().Result.ShouldEqual("fark");
         }
     }
 }

@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net;
+using System.Net.Http;
+using System.Threading;
+using Graphite.Http;
 using NUnit.Framework;
+using Should;
 
 namespace Tests.Unit.Http
 {
@@ -11,9 +11,16 @@ namespace Tests.Unit.Http
     public class TextResultTests
     {
         [Test]
-        public void Should_()
+        public void Should_create_response([Values("\r", "\n", "\r\n")] string statusTextWhitespace)
         {
-            throw new NotImplementedException();
+            var response = new TextResult(new HttpRequestMessage(), "data", 
+                HttpStatusCode.NotFound, $"status{statusTextWhitespace}text")
+                .ExecuteAsync(new CancellationToken()).Result;
+
+            response.StatusCode.ShouldEqual(HttpStatusCode.NotFound);
+            response.ReasonPhrase.ShouldEqual("status text");
+            response.Content.ReadAsStringAsync().Result.ShouldEqual("data");
+            response.Content.Headers.ContentType.MediaType.ShouldEqual(MimeTypes.TextPlain);
         }
     }
 }

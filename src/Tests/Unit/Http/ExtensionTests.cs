@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Graphite.Http;
+using Graphite.Linq;
 using NUnit.Framework;
 using Should;
 using Tests.Common;
@@ -37,10 +39,32 @@ namespace Tests.Unit.Http
             result.Value.ShouldEqual(value);
         }
 
-        [Test]
-        public void Should_parse_headers()
+        [TestCase(null, null)]
+        [TestCase("", null)]
+        [TestCase("fark", "fark:")]
+        [TestCase("fark : farker", "fark:farker")]
+        [TestCase("fark : farker\r\n", "fark:farker")]
+        [TestCase("fark : farker\r\noh", "fark:farker,oh:")]
+        [TestCase("fark : farker\r\noh: hai", "fark:farker,oh:hai")]
+        public void Should_parse_headers(string headers, string expected)
         {
-            throw new NotImplementedException();
+            var result = headers.ParseHeaders();
+
+            if (expected.IsNullOrEmpty())
+            {
+                result.ShouldBeEmpty();
+                return;
+            }
+
+            var compare = expected.Split(',').Select(x => x.Split(':')).ToArray();
+
+            result.Count.ShouldEqual(compare.Length);
+
+            for (var i = 0; i < compare.Length; i++)
+            {
+                result[i].Key.ShouldEqual(compare[i][0]);
+                result[i].Value.ShouldEqual(compare[i][1]);
+            }
         }
 
         [TestCase(null, null)]
@@ -63,7 +87,7 @@ namespace Tests.Unit.Http
             contentType.Parameters.Add(new NameValueHeaderValue(
                 "boundary", $"{qualifer}fark-boundary{qualifer}"));
 
-            content.GetContentBoundry().ShouldEqual("fark-boundary");
+            content.Headers.GetContentBoundry().ShouldEqual("fark-boundary");
         }
 		
         [TestCase(null, "")]

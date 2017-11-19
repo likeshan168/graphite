@@ -36,7 +36,7 @@ namespace Graphite.Binding
 
         public bool AppliesTo(RequestBinderContext context)
         {
-            return _requestMessage.ContentTypeIs(MimeTypes.MultipartFormData);
+            return _requestMessage.HasMimeMultipartContent();
         }
 
         public async Task<BindResult> Bind(RequestBinderContext context)
@@ -44,7 +44,8 @@ namespace Graphite.Binding
             var route = _actionDescriptor.Route;
             var requestParameter = route.RequestParameter;
             var stream = await _requestMessage.Content.ReadAsStreamAsync();
-            var multipartContent = new MultipartContent(stream, _requestMessage.Content, _configuration);
+            var multipartContent = new MultipartContent(stream, 
+                _requestMessage.Content.Headers, _configuration);
             var values = new List<KeyValuePair<string, object>>();
 
             while (true)
