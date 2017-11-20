@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Graphite.Extensions;
 
 namespace Graphite.Http
@@ -34,17 +35,26 @@ namespace Graphite.Http
             return _buffer.ContainsAt(compare, _offset);
         }
 
-        public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
+        public ReadResult Read(byte[] buffer, int offset, int count,
+            params byte[][] invalidTokens)
         {
-            throw new NotImplementedException();
+            return ReadTo(null, (b, o, c) => !invalidTokens
+                .Any(x => b.ContainsAt(x, o, c)));
         }
 
-        public ReadResult ReadTo(byte[] delimiter)
+        public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
+        {
+            return ReadTo(delimiter, (b, o, c) => validChars
+                .Select(x => new [] { (byte)x })
+                .Any(x => b.ContainsAt(x, o, c)));
+        }
+
+        public ReadResult ReadTo(byte[] delimiter, Func<byte[], int, int, bool> validate = null)
         {
             var read = 0;
             while (true)
             {
-                var result = ReadTo(null, 0, DefaultBufferSize, delimiter);
+                var result = ReadTo(null, 0, DefaultBufferSize, delimiter, validate);
                 read += result.Read;
                 if (result.Read == 0 || result.EndOfSection || result.EndOfStream)
                     return new ReadResult(read, result.EndOfSection, result.EndOfStream);
@@ -53,36 +63,29 @@ namespace Graphite.Http
 
         public class ReadResult
         {
-            public ReadResult(int read, bool endOfSection, bool endOfStream, 
-                bool error = false, string errorMessage = null)
+            public ReadResult(int read, bool endOfSection, bool endOfStream, bool invalid = false)
             {
                 Read = read;
                 EndOfSection = endOfSection;
                 EndOfStream = endOfStream;
-                Error = error;
-                ErrorMessage = errorMessage;
+                Invalid = invalid;
             }
 
             public int Read { get; }
             public bool EndOfSection { get; }
             public bool EndOfStream { get; }
-            public bool Error { get; }
-            public string ErrorMessage { get; }
-        }
-
-        public ReadResult Read(byte[] buffer, int offset, int count,
-            params byte[][] invalidTokens)
-        {
-            throw new NotImplementedException();
+            public bool Invalid { get; }
         }
 
         public ReadResult ReadTo(byte[] buffer, int offset, int count, 
             byte[] delimiter, params byte[][] invalidTokens)
         {
-            throw new NotImplementedException();
+            return ReadTo(buffer, offset, count, delimiter, 
+                (b, o, c) => !invalidTokens.Any(x => b.ContainsAt(x, o, c)));
         }
-
-        public ReadResult ReadTo(byte[] buffer, int offset, int count, byte[] delimiter)
+        
+        private ReadResult ReadTo(byte[] buffer, int offset, int count, byte[] delimiter,
+            Func<byte[], int, int, bool> validate = null)
         {
             if (offset < 0) throw new ArgumentException($"Offset must be greater than zero but was {offset}.");
             if (count < 1) throw new ArgumentException($"Count must be greater than 1 but was {count}.");
@@ -113,6 +116,9 @@ namespace Graphite.Http
                 : Math.Min(maxSize, _size - delimiter.Length + 1);
 
             if (readSize <= 0) readSize = maxSize;
+
+            if (!validate?.Invoke(_buffer, _offset, readSize) ?? true)
+                return new ReadResult(0, false, _end);
 
             if (buffer != null)
                 Array.Copy(_buffer, _offset, buffer, offset, readSize);

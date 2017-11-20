@@ -104,6 +104,24 @@ namespace Tests.Unit.Http
         }
 
         [Test]
+        public void Should_read_to_failing_on_invalid_chars()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
+        public void Should_read_failing_on_invalid_tokens()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
+        public void Should_read_to_failing_on_invalid_tokens()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
         public void Should_fail_if_buffer_less_than_1()
         {
             Assert.Throws<ArgumentException>(() => new DelimitedBuffer(null, 0));

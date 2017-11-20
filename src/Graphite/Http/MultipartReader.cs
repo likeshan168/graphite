@@ -96,7 +96,7 @@ namespace Graphite.Http
 
 
 
-        public ReadResult Read2(byte[] buffer, int offset, int count)
+        public ReadResult Read(byte[] buffer, int offset, int count)
         {
             if (CurrentSection == MultipartSection.Preamble)
                 return ReadPreamble(buffer, offset, count);
@@ -116,7 +116,7 @@ namespace Graphite.Http
                 ? _buffer.ReadTo(buffer, offset, count, _boundary)
                 : _buffer.ReadTo(buffer, offset, count, _boundaryLine, _boundary);
 
-            if (preambleResult.Error)
+            if (preambleResult.Invalid)
                 return new ReadResult("Boundary not preceeded by CRLF.", preambleResult);
 
             if (preambleResult.EndOfStream)
@@ -140,7 +140,7 @@ namespace Graphite.Http
             var result = _buffer.ReadTo(buffer, offset, 
                 count, BodyDelimiter, _boundaryLine, _boundary);
 
-            if (result.Error)
+            if (result.Invalid)
                 return new ReadResult("Headers not followed by empty line.", result);
 
             if (result.EndOfStream)
@@ -155,7 +155,7 @@ namespace Graphite.Http
         {
             var bodyResult = _buffer.ReadTo(buffer, offset, count, _boundaryLine, _boundary);
 
-            if (bodyResult.Error)
+            if (bodyResult.Invalid)
                 return new ReadResult("Boundary not in its own line.", bodyResult);
 
             if (bodyResult.EndOfStream)
@@ -179,7 +179,7 @@ namespace Graphite.Http
 
             var result = _buffer.ReadTo(CRLF, ' ', '\r', '\n', '\t');
 
-            if (result.Error)
+            if (result.Invalid)
                 return new ReadResult("Invalid characters following boundary.", result);
 
             if (result.EndOfStream && !closingBoundary)
@@ -206,7 +206,7 @@ namespace Graphite.Http
 
             var result = _buffer.Read(buffer, offset, count, _boundaryLine, _boundary);
 
-            if (result.Error)
+            if (result.Invalid)
                 return new ReadResult("Boundary found after closing boundary.", result);
 
             EndOfStream = result.EndOfStream;
@@ -221,7 +221,7 @@ namespace Graphite.Http
 
 
 
-        public ReadResult Read(byte[] buffer, int offset, int count)
+        public ReadResult Read2(byte[] buffer, int offset, int count)
         {
             var delimiter = CurrentSection == MultipartSection.Headers
                 ? BodyDelimiter

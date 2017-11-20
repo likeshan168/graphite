@@ -87,13 +87,14 @@ namespace Graphite.Extensions
             return target;
         }
 
-        public static bool ContainsAt(this byte[] source, byte[] compare, int offset)
+        public static bool ContainsAt(this byte[] source, byte[] compare, int offset, int? length = null)
         {
+            length = length ?? compare.Length;
             if (offset < 0 || source == null || source.Length == 0 ||
-                compare == null || compare.Length == 0 ||
-                compare.Length > source.Length - offset) return false;
+                compare == null || length == 0 ||
+                length > source.Length - offset) return false;
 
-            for (var index = 0; index < compare.Length; index++)
+            for (var index = 0; index < length; index++)
             {
                 if (source[index + offset] != compare[index]) return false;
             }
