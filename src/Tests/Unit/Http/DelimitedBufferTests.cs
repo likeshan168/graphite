@@ -31,7 +31,7 @@ namespace Tests.Unit.Http
         [TestCase("fark\r\nfarker", "fark,farker", 3, 3)]
         [TestCase("fark\r\nmc\r\nfarker", "fark,mc,farker", 5, 5)]
         [TestCase("fark\r\nmc\r\nfarker", "fark,mc,farker", 6, 5)]
-        public void Should_read_to(string data, string expected, 
+        public void Should_read_into_buffer(string data, string expected, 
             int multilineBufferSize, int readBufferSize)
         {
             ReadLines(data, multilineBufferSize, readBufferSize)
@@ -51,6 +51,8 @@ namespace Tests.Unit.Http
                 var lineBuffer = new byte[readBufferSize];
                 var result = buffer.ReadTo(lineBuffer, 0, readBufferSize, Delimiter);
                 var currentRead = lineBuffer.ToString(result.Read);
+
+                result.Invalid.ShouldBeFalse();
 
                 currentLine += currentRead;
 
@@ -83,7 +85,6 @@ namespace Tests.Unit.Http
             buffer.StartsWith(compare.ToBytes()).ShouldEqual(expected);
         }
 
-        [Test]
         [TestCase("", 1, "", false, false, 0)]
         [TestCase("f", 1, "f", true, false, 0)]
         [TestCase("fa", 1, "a", true, false, 1)]
@@ -101,11 +102,28 @@ namespace Tests.Unit.Http
             result.EndOfSection.ShouldEqual(endOfSection);
             result.EndOfStream.ShouldEqual(endOfStream);
             result.Read.ShouldEqual(read);
+            result.Invalid.ShouldBeFalse();
         }
 
-        [Test]
-        public void Should_read_to_failing_on_invalid_chars()
+        [TestCase("", 1, "", "", false, false, 0, false)]
+        [TestCase("f", 1, "f", "", true, false, 0, false)]
+        [TestCase("fa", 1, "a", "", true, false, 1, false)]
+        [TestCase("fark", 4, "ar", "", true, false, 1, false)]
+        [TestCase("fark", 4, "hai", "", true, true, 4, false)]
+        [TestCase("fark", 4, "farker", "", true, true, 4, false)]
+        public void Should_read_to_failing_on_invalid_chars(
+            string data, int bufferSize, string delimiter, string invalidChars,
+            bool endOfSection, bool endOfStream, int read, bool invalid)
         {
+            var stream = new MemoryStream(data.ToBytes());
+            var buffer = new DelimitedBuffer(stream, bufferSize);
+
+            var result = buffer.ReadTo(delimiter.ToBytes(), invalidChars.ToCharArray());
+
+            result.EndOfSection.ShouldEqual(endOfSection);
+            result.EndOfStream.ShouldEqual(endOfStream);
+            result.Read.ShouldEqual(read);
+            result.Invalid.ShouldEqual(invalid);
             throw new NotImplementedException();
         }
 
@@ -125,6 +143,19 @@ namespace Tests.Unit.Http
         public void Should_fail_if_buffer_less_than_1()
         {
             Assert.Throws<ArgumentException>(() => new DelimitedBuffer(null, 0));
+        }
+
+        [Test]
+        public void Should_indicate_when_at_begining_of_stream()
+        {
+            var stream = new MemoryStream("fark".ToBytes());
+            var buffer = new DelimitedBuffer(stream);
+
+            buffer.BeginingOfStream.ShouldBeTrue();
+
+            buffer.ReadTo(null, 0, 2, null);
+
+            buffer.BeginingOfStream.ShouldBeFalse();
         }
 
         [Test]

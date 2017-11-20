@@ -12,30 +12,29 @@ namespace Graphite.Http
         private readonly HttpRequestMessage _request;
         private readonly string _data;
         private readonly HttpStatusCode _status;
-        private readonly string _statusText;
+        private readonly string _reasonPhrase;
 
         public TextResult(HttpRequestMessage request, string data,
-            HttpStatusCode status, string statusText) :
-            this(request, status, statusText)
+            HttpStatusCode status, string reasonPhrase) :
+            this(request, status, reasonPhrase)
         {
             _data = data;
         }
 
         public TextResult(HttpRequestMessage request,
-            HttpStatusCode status, string statusText)
+            HttpStatusCode status, string reasonPhrase)
         {
             _data = "";
             _request = request;
             _status = status;
-            _statusText = statusText;
+            _reasonPhrase = reasonPhrase;
         }
 
         public Task<HttpResponseMessage> ExecuteAsync(
             CancellationToken cancellationToken)
         {
             var response = _request.CreateResponse(_status);
-            response.ReasonPhrase = _statusText.Replace("\r\n", " ")
-                .Replace("\r", " ").Replace("\n", " ");
+            response.SafeSetReasonPhrase(_reasonPhrase);
             response.Content = new StringContent(_data);
             response.Content.Headers.ContentType =
                 new MediaTypeHeaderValue(MimeTypes.TextPlain);

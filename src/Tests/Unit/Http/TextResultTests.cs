@@ -11,10 +11,10 @@ namespace Tests.Unit.Http
     public class TextResultTests
     {
         [Test]
-        public void Should_create_response([Values("\r", "\n", "\r\n")] string statusTextWhitespace)
+        public void Should_create_response([Values("\r", "\n", "\r\n")] string reasonPhraseWhitespace)
         {
             var response = new TextResult(new HttpRequestMessage(), "data", 
-                HttpStatusCode.NotFound, $"status{statusTextWhitespace}text")
+                HttpStatusCode.NotFound, $"status{reasonPhraseWhitespace}text")
                 .ExecuteAsync(new CancellationToken()).Result;
 
             response.StatusCode.ShouldEqual(HttpStatusCode.NotFound);

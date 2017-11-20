@@ -101,9 +101,15 @@ namespace Graphite.Extensions
 
             return true;
         }
-        
-        public static int FindInRange(this byte[] source,
-            int offset, int length, byte[] find)
+
+        public static bool Contains(this byte[] source, 
+            byte[] find, int offset, int length)
+        {
+            return IndexOfSequence(source, find, offset, length) > -1;
+        }
+
+        public static int IndexOfSequence(this byte[] source,
+            byte[] find, int offset, int length)
         {
             if (offset < 0 || length < 0 || source == null || 
                 source.Length == 0) return -1;

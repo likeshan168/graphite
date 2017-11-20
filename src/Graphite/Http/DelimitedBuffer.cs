@@ -44,7 +44,7 @@ namespace Graphite.Http
 
         public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
         {
-            return ReadTo(delimiter, (b, o, c) => validChars
+            return ReadTo(delimiter, (b, o, c) => !validChars
                 .Select(x => new [] { (byte)x })
                 .Any(x => b.ContainsAt(x, o, c)));
         }
@@ -81,7 +81,7 @@ namespace Graphite.Http
             byte[] delimiter, params byte[][] invalidTokens)
         {
             return ReadTo(buffer, offset, count, delimiter, 
-                (b, o, c) => !invalidTokens.Any(x => b.ContainsAt(x, o, c)));
+                (b, o, c) => !invalidTokens.Any(x => b.Contains(x, o, c)));
         }
         
         private ReadResult ReadTo(byte[] buffer, int offset, int count, byte[] delimiter,
@@ -103,7 +103,7 @@ namespace Graphite.Http
 
             var maxSize = Math.Min(count, _size);
 
-            var endOfLine = _buffer.FindInRange(_offset, maxSize, delimiter);
+            var endOfLine = _buffer.IndexOfSequence(delimiter, _offset, maxSize);
 
             if (endOfLine == 0)
             {
@@ -117,7 +117,7 @@ namespace Graphite.Http
 
             if (readSize <= 0) readSize = maxSize;
 
-            if (!validate?.Invoke(_buffer, _offset, readSize) ?? true)
+            if (!(validate?.Invoke(_buffer, _offset, readSize) ?? true))
                 return new ReadResult(0, false, _end);
 
             if (buffer != null)

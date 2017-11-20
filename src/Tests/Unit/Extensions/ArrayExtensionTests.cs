@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using Graphite.Extensions;
 using NUnit.Framework;
 using Should;
@@ -48,7 +47,7 @@ namespace Tests.Unit.Extensions
         {
             var findBytes = find.ToBytes();
             var result = value.ToBytes()
-                .FindInRange(offset, length, findBytes);
+                .IndexOfSequence(findBytes, offset, length);
 
             result.ShouldEqual(index);
         }
