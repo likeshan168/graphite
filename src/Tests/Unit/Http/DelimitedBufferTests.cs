@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Graphite.Extensions;
@@ -13,72 +12,6 @@ namespace Tests.Unit.Http
     [TestFixture]
     public class DelimitedBufferTests
     {
-        //        Data     Delimiter  Buffer  Invalid  EOP     EOS    Read  Result Invalid
-        [TestCase("",      "",        1,      "",      true,   true,  0,    "",    false)]
-        public void Should_read_to_delimiter_failing_on_invalid_tokens(
-            string data, string delmiter, int bufferSize, string invalidTokens, 
-            bool endOfSection, bool endOfStream, int read, string expectedData, 
-            bool invalid)
-        {
-            var invalidTokenBytes = invalidTokens.Split(",")
-                .Select(x => x.Select(y => (byte)y).ToArray()).ToArray();
-            var stream = new MemoryStream(data.ToBytes());
-            var buffer = new DelimitedBuffer(stream, bufferSize);
-            var readBuffer = new byte[10];
-            var readData = "";
-            var readLength = 0;
-            DelimitedBuffer.ReadResult result;
-
-            while (true)
-            {
-                result = buffer.Read(readBuffer, 0, 10, invalidTokenBytes);
-                readLength += result.Read;
-                if (result.Read > 0) readData += readBuffer.ToString(result.Read);
-                if (result.Invalid ||
-                    result.EndOfSection || result.EndOfStream) break;
-            }
-
-            result.Invalid.ShouldEqual(invalid);
-            result.EndOfSection.ShouldEqual(endOfSection);
-            result.EndOfStream.ShouldEqual(endOfStream);
-            readLength.ShouldEqual(read);
-            readData.ShouldEqual(expectedData);
-            throw new NotImplementedException("fix me");
-        }
-
-        private List<string> ReadLines(string data, byte[] delimiter,
-            int delimitedBufferSize, int readBufferSize)
-        {
-            var stream = new MemoryStream(data.ToBytes());
-            var buffer = new DelimitedBuffer(stream, delimitedBufferSize);
-            var lines = new List<string>();
-            var currentLine = "";
-
-            while (true)
-            {
-                var lineBuffer = new byte[readBufferSize];
-                var result = buffer.ReadTo(lineBuffer, 0, readBufferSize, delimiter);
-                var currentRead = lineBuffer.ToString(result.Read);
-
-                result.Invalid.ShouldBeFalse();
-
-                currentLine += currentRead;
-
-                Console.WriteLine($"EOL: {result.EndOfSection} " +
-                                  $"EOS: {result.EndOfStream} " +
-                                  $"Read: {result.Read} " +
-                                  $"Data: {currentRead}");
-
-                if (result.EndOfSection)
-                {
-                    lines.Add(currentLine);
-                    currentLine = "";
-                }
-
-                if (result.EndOfStream || result.Read == 0) return lines;
-            }
-        }
-
         //        Data    Buffer  Compare   Expected
         [TestCase("",     1,      "",       false)]
         [TestCase("fark", 1,      "f",      true)]
@@ -93,82 +26,146 @@ namespace Tests.Unit.Http
 
             buffer.StartsWith(compare.ToBytes()).ShouldEqual(expected);
         }
-
-        //        Data        Buffer  Delimiter   EOP    EOS    Read  Remaining
-        [TestCase("",         1,      "",         true,  true,  0,    "")]
-        [TestCase(",",        1,      ",",        true,  false, 0,    "")]
-        [TestCase("a,",       1,      ",",        true,  false, 1,    "")]
         
-        [TestCase("ab\r\ncd", 2,      "\r\n",     true,  false, 2,    "cd")]
-        [TestCase("ab\r\ncd", 3,      "\r\n",     true,  false, 2,    "cd")]
-        [TestCase("ab\r\ncd", 4,      "\r\n",     true,  false, 2,    "cd")]
-        [TestCase("ab\r\ncd", 5,      "\r\n",     true,  false, 2,    "cd")]
-        [TestCase("ab\r\ncd", 6,      "\r\n",     true,  false, 2,    "cd")]
-        [TestCase("ab\r\ncd", 7,      "\r\n",     true,  false, 2,    "cd")]
-        
-        [TestCase("abcd\r\n", 2,      "\r\n",     true,  false, 4,    "")]
-        [TestCase("abcd\r\n", 3,      "\r\n",     true,  false, 4,    "")]
-        [TestCase("abcd\r\n", 4,      "\r\n",     true,  false, 4,    "")]
-        [TestCase("abcd\r\n", 5,      "\r\n",     true,  false, 4,    "")]
-        [TestCase("abcd\r\n", 6,      "\r\n",     true,  false, 4,    "")]
-        [TestCase("abcd\r\n", 7,      "\r\n",     true,  false, 4,    "")]
+        //        Data     Buffer  Delimiter   Invalid EOP1    EOS1   Read1 Invalid1   EOP2   EOS2   Read2  Invalid2  Remaining
+        [TestCase("",        1,    "",         "",     true,   true,  "",   false,     true,  true,  "",    false,    "")]
+        [TestCase(",",       1,    ",",        "",     true,   false, "",   false,     true,  true,  "",    false,    "")]
 
-        [TestCase("abcd",     4,      "hai",      true,  true,  4,    "")]
-        public void Should_read_to(string data, int bufferSize, string delimiter,
-            bool endOfSection, bool endOfStream, int read, string remainingData)
+        [TestCase("a",       1,    ",",        "",     false,  false,  "a", false,     true,  true,  "",    false,    "")]
+        [TestCase("a",       2,    ",",        "",     false,  false,  "a", false,     true,  true,  "",    false,    "")]
+        [TestCase("a",       3,    ",",        "",     false,  false,  "a", false,     true,  true,  "",    false,    "")]
+        [TestCase("a",       4,    ",",        "",     false,  false,  "a", false,     true,  true,  "",    false,    "")]
+
+        [TestCase("a,",      1,    ",",        "",     false,  false, "a",  false,     true,  false,  "",   false,    "")]
+        [TestCase("a,",      2,    ",",        "",     true,   false, "a",  false,     true,  true,  "",    false,    "")]
+        [TestCase("a,",      3,    ",",        "",     true,   false, "a",  false,     true,  true,  "",    false,    "")]
+        [TestCase("a,",      4,    ",",        "",     true,   false, "a",  false,     true,  true,  "",    false,    "")]
+
+        [TestCase("ab,",     1,    ",",        "a",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+        [TestCase("ab,",     2,    ",",        "a",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+        [TestCase("ab,",     3,    ",",        "a",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+        [TestCase("ab,",     4,    ",",        "a",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+
+        [TestCase("ab,",     1,    ",",        "b",    false,  false, "a",  false,     false, false, "",    true,     "b,")]
+        [TestCase("ab,",     2,    ",",        "b",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+        [TestCase("ab,",     3,    ",",        "b",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+        [TestCase("ab,",     4,    ",",        "b",    false,  false, "",   true,      false, false, "",    true,     "ab,")]
+
+        [TestCase("ab,",     1,    ",",        "",     false,  false, "a",  false,     false, false, "b",   false,    ",")]
+        [TestCase("ab,",     2,    ",",        "",     false,  false, "ab", false,     true,  false, "",    false,    "")]
+        [TestCase("ab,",     3,    ",",        "",     true,   false, "ab", false,     true,  true,  "",    false,    "")]
+        [TestCase("ab,",     4,    ",",        "",     true,   false, "ab", false,     true,  true,  "",    false,    "")]
+
+        [TestCase("ab,cd",   1,    ",",        "",     false,  false, "a",  false,     false, false, "b",   false,    ",cd")]
+        [TestCase("ab,cd",   2,    ",",        "",     false,  false, "ab", false,     true,  false, "",    false,    "cd")]
+        [TestCase("ab,cd",   3,    ",",        "",     true,   false, "ab", false,     false, false, "cd",  false,    "")]
+        [TestCase("ab,cd",   4,    ",",        "",     true,   false, "ab", false,     false, false, "c",   false,    "d")]
+
+        [TestCase("ab,cd,e", 1,    ",",        "e",    false,  false, "a",  false,     false, false, "b",   false,    ",cd,e")]
+        [TestCase("ab,cd,e", 2,    ",",        "e",    false,  false, "ab", false,     true,  false, "",    false,    "cd,e")]
+        [TestCase("ab,cd,e", 3,    ",",        "e",    true,   false, "ab", false,     true,  false, "cd",  false,    "e")]
+        [TestCase("ab,cd,e", 4,    ",",        "e",    true,   false, "ab", false,     false, false, "c",   false,    "d,e")]
+        
+        [TestCase("a\r\nb",  2,    "\r\n",     "",     false,  false, "a",  false,     true,  false, "",    false,    "b")]
+        [TestCase("a\r\nb",  3,    "\r\n",     "",     true,   false, "a",  false,     false, false, "b",   false,    "")]
+        [TestCase("a\r\nb",  4,    "\r\n",     "",     true,   false, "a",  false,     true,  true,  "b",   false,    "")]
+        [TestCase("a\r\nb",  5,    "\r\n",     "",     true,   false, "a",  false,     true,  true,  "b",   false,    "")]
+        public void Should_read_to_delimiter_failing_on_invalid_tokens(
+            string data, int bufferSize, string delimiter, string invalidTokens,
+            bool endOfSection1, bool endOfStream1, string read1, bool invalid1,
+            bool endOfSection2, bool endOfStream2, string read2, bool invalid2,
+            string remainingData)
         {
+            var invalidTokenBytes = invalidTokens.Split(",")
+                .Select(x => x.Select(y => (byte)y).ToArray()).ToArray();
             var stream = new MemoryStream(data.ToBytes());
             var buffer = new DelimitedBuffer(stream, bufferSize);
+            var readBuffer = new byte[10];
 
-            var result = buffer.ReadTo(delimiter.ToBytes());
+            var result = buffer.ReadTo(readBuffer, 0, 10, delimiter.ToBytes(), invalidTokenBytes);
 
-            result.EndOfSection.ShouldEqual(endOfSection);
-            result.EndOfStream.ShouldEqual(endOfStream);
-            result.Invalid.ShouldBeFalse();
-            result.Read.ShouldEqual(read);
+            result.Invalid.ShouldEqual(invalid1);
+            result.EndOfSection.ShouldEqual(endOfSection1);
+            result.EndOfStream.ShouldEqual(endOfStream1);
+            readBuffer.ToString(result.Read).ShouldEqual(read1);
 
-            var nextBuffer = new byte[10];
-            var nextData = "";
+            result = buffer.ReadTo(readBuffer, 0, 10, delimiter.ToBytes(), invalidTokenBytes);
 
-            while (true)
-            {
-                result = buffer.Read(nextBuffer, 0, 10);
-                if (result.Read > 0) nextData += nextBuffer.ToString(result.Read);
-                if (result.Invalid || result.EndOfSection || result.EndOfStream) break;
-            }
-            
-            nextData.ShouldEqual(remainingData);
+            result.Invalid.ShouldEqual(invalid2);
+            result.EndOfSection.ShouldEqual(endOfSection2);
+            result.EndOfStream.ShouldEqual(endOfStream2);
+            readBuffer.ToString(result.Read).ShouldEqual(read2);
+
+            ReadRemaining(buffer).ShouldEqual(remainingData);
         }
 
-        //        Data     Buffer  Delimiter   Valid   EOP    EOS    Read  Invalid
-        [TestCase("",      1,      "",         "",     true,  true,  0,    false)]
-        [TestCase(",",     1,      ",",        "b",    true,  false, 0,    false)]
-        [TestCase("a,",    1,      ",",        "a",    true,  false, 1,    false)]
-        [TestCase("a,",    2,      ",",        "a",    true,  false, 1,    false)]
-        [TestCase("a,",    3,      ",",        "a",    true,  false, 1,    false)]
-        [TestCase("a,",    3,      ",",        "a",    true,  false, 1,    false)]
-        [TestCase("ab,",   1,      ",",        "a",    false, false, 1,    true)]
-        [TestCase("ab,",   1,      ",",        "a",    false, false, 1,    true)]
-        [TestCase("ab,",   2,      ",",        "a",    false, false, 0,    true)]
-        [TestCase("ab,",   3,      ",",        "a",    false, false, 0,    true)]
-        [TestCase("ab,",   4,      ",",        "a",    false, false, 0,    true)]
-        [TestCase("ab,",   1,      ",",        "ab",   true,  false, 2,    false)]
-        [TestCase("ab,",   2,      ",",        "ab",   true,  false, 2,    false)]
-        [TestCase("ab,",   3,      ",",        "ab",   true,  false, 2,    false)]
-        [TestCase("ab,",   4,      ",",        "ab",   true,  false, 2,    false)]
+        //        Data     Buffer  Delimiter   Valid   EOP1   EOS1   Read1 Invalid1   EOP2   EOS2   Read2 Invalid2  Remaining
+        [TestCase("",      1,      "",         "",     true,  true,  0,    false,     true,  true,  0,    false,    "")]
+        [TestCase(",",     1,      ",",        "b",    true,  false, 0,    false,     true,  true,  0,    false,    "")]
+
+        [TestCase("a",     1,      ",",        "a",    true,  true,  1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a",     2,      ",",        "a",    true,  true,  1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a",     3,      ",",        "a",    true,  true,  1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a",     4,      ",",        "a",    true,  true,  1,    false,     true,  true,  0,    false,    "")]
+
+        [TestCase("a,",    1,      ",",        "a",    true,  false, 1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a,",    2,      ",",        "a",    true,  false, 1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a,",    3,      ",",        "a",    true,  false, 1,    false,     true,  true,  0,    false,    "")]
+        [TestCase("a,",    4,      ",",        "a",    true,  false, 1,    false,     true,  true,  0,    false,    "")]
+
+        [TestCase("ab,",   1,      ",",        "a",    false, false, 1,    true,      false, false, 0,    true,     "b,")]
+        [TestCase("ab,",   2,      ",",        "a",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+        [TestCase("ab,",   3,      ",",        "a",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+        [TestCase("ab,",   4,      ",",        "a",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+
+        [TestCase("ab,",   1,      ",",        "b",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+        [TestCase("ab,",   2,      ",",        "b",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+        [TestCase("ab,",   3,      ",",        "b",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+        [TestCase("ab,",   4,      ",",        "b",    false, false, 0,    true,      false, false, 0,    true,     "ab,")]
+
+        [TestCase("ab,",   1,      ",",        "ab",   true,  false, 2,    false,     true,  true,  0,    false,    "")]
+        [TestCase("ab,",   2,      ",",        "ab",   true,  false, 2,    false,     true,  true,  0,    false,    "")]
+        [TestCase("ab,",   3,      ",",        "ab",   true,  false, 2,    false,     true,  true,  0,    false,    "")]
+        [TestCase("ab,",   4,      ",",        "ab",   true,  false, 2,    false,     true,  true,  0,    false,    "")]
+
+        [TestCase("ab,cd",   1,    ",",        "abcd", true,  false, 2,    false,     true,  true,  2,    false,    "")]
+        [TestCase("ab,cd",   2,    ",",        "abcd", true,  false, 2,    false,     true,  true,  2,    false,    "")]
+        [TestCase("ab,cd",   3,    ",",        "abcd", true,  false, 2,    false,     true,  true,  2,    false,    "")]
+        [TestCase("ab,cd",   4,    ",",        "abcd", true,  false, 2,    false,     true,  true,  2,    false,    "")]
+
+        [TestCase("ab,cd,e", 1,    ",",        "abcd", true,  false, 2,    false,     true,  false, 2,    false,    "e")]
+        [TestCase("ab,cd,e", 2,    ",",        "abcd", true,  false, 2,    false,     true,  false, 2,    false,    "e")]
+        [TestCase("ab,cd,e", 3,    ",",        "abcd", true,  false, 2,    false,     true,  false, 2,    false,    "e")]
+        [TestCase("ab,cd,e", 4,    ",",        "abcd", true,  false, 2,    false,     true,  false, 2,    false,    "e")]
+        
+        [TestCase("a\r\nb",  2,    "\r\n",     "ab",   true,  false, 1,    false,     true,   true, 1,    false,    "")]
+        [TestCase("a\r\nb",  3,    "\r\n",     "ab",   true,  false, 1,    false,     true,   true, 1,    false,    "")]
+        [TestCase("a\r\nb",  4,    "\r\n",     "ab",   true,  false, 1,    false,     true,   true, 1,    false,    "")]
+        [TestCase("a\r\nb",  5,    "\r\n",     "ab",   true,  false, 1,    false,     true,   true, 1,    false,    "")]
         public void Should_read_to_failing_on_invalid_chars(
             string data, int bufferSize, string delimiter, string validChars,
-            bool endOfSection, bool endOfStream, int read, bool invalid)
+            bool endOfSection1, bool endOfStream1, int read1, bool invalid1,
+            bool endOfSection2, bool endOfStream2, int read2, bool invalid2,
+            string remainingData)
         {
             var stream = new MemoryStream(data.ToBytes());
             var buffer = new DelimitedBuffer(stream, bufferSize);
 
             var result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToCharArray());
 
-            result.Invalid.ShouldEqual(invalid);
-            result.EndOfSection.ShouldEqual(endOfSection);
-            result.EndOfStream.ShouldEqual(endOfStream);
-            result.Read.ShouldEqual(read);
+            result.Invalid.ShouldEqual(invalid1);
+            result.EndOfSection.ShouldEqual(endOfSection1);
+            result.EndOfStream.ShouldEqual(endOfStream1);
+            result.Read.ShouldEqual(read1);
+
+            result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToCharArray());
+
+            result.Invalid.ShouldEqual(invalid2);
+            result.EndOfSection.ShouldEqual(endOfSection2);
+            result.EndOfStream.ShouldEqual(endOfStream2);
+            result.Read.ShouldEqual(read2);
+
+            ReadRemaining(buffer).ShouldEqual(remainingData);
         }
         
         //        Data     Buffer  Invalid  EOP     EOS    Read  Result Invalid
@@ -228,10 +225,19 @@ namespace Tests.Unit.Http
             readData.ShouldEqual(expectedData);
         }
 
-        [Test]
-        public void Should_read_to_failing_on_invalid_tokens()
+        private string ReadRemaining(DelimitedBuffer delimitedBuffer)
         {
-            throw new NotImplementedException();
+            var buffer = new byte[10];
+            var data = "";
+
+            while (true)
+            {
+                var result = delimitedBuffer.Read(buffer, 0, 10);
+                if (result.Read > 0) data += buffer.ToString(result.Read);
+                if (result.Invalid || result.EndOfSection || result.EndOfStream) break;
+            }
+
+            return data;
         }
 
         [Test]
