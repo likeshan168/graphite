@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using Graphite.Http;
 using Graphite.Linq;
+using Graphite.Extensions;
 using NUnit.Framework;
 using Should;
 using Tests.Common;

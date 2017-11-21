@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using Graphite.Extensions;
 using NUnit.Framework;
 using Should;
@@ -19,12 +20,31 @@ namespace Tests.Unit.Extensions
         [TestCase("fark", "ark", 1, true, Description = "Offset, same size.")]
         [TestCase("fark", "arker", 1, false, Description = "Offset, larger.")]
         [TestCase("fark", "k", 3, true, Description = "Offset, last byte of source.")]
-        public void Should_contain_at(string value,
+        public void Should_contain_sequence_at(string value,
             string match, int offset, bool startsWith)
         {
             value.ToBytes()
-                .ContainsAt(match.ToBytes(), offset)
+                .ContainsSequenceAt(match.ToBytes(), offset)
                 .ShouldEqual(startsWith);
+        }
+
+        [TestCase("a", "b", 0, 0, true)]
+        [TestCase("a", "b", -1, 1, true)]
+        [TestCase(null, "a", 0, 1, true)]
+        [TestCase("", "a", 0, 1, true)]
+        [TestCase("a", null, 0, 1, true)]
+        [TestCase("a", "", 0, 1, true)]
+        [TestCase("a", "b", 2, 3, true)]
+        [TestCase("ab", "b", 1, 5, true)]
+        [TestCase("ab", "b", 2, 5, true)]
+        [TestCase("ab", "b", 0, 5, false)]
+        [TestCase("abcdef", "cd", 2, 2, true)]
+        [TestCase("abcdef", "cd", 2, 3, false)]
+        public void Should_only_contain_bytes(string data, string validChars,
+            int offset, int length, bool expected)
+        {
+            data.ToBytes().OnlyContains(validChars?.ToBytes(), offset, length)
+                .ShouldEqual(expected);
         }
 
         [TestCase(null, "abcdef", 0, 1, -1, Description = "Null source.")]
@@ -42,7 +62,7 @@ namespace Tests.Unit.Extensions
         [TestCase("abcdef", "cd", 3, 2, -1, Description = "Compare from offset, window one byte after match.")]
         [TestCase("abcdef", "bcdefg", 1, 10, -1, Description = "Compare from offset, compare larger than source.")]
         [TestCase("abcdef", "f", 4, 2, 1, Description = "Compare from offset, compare last byte of buffer.")]
-        public void Should_find_value_in_range(string value,
+        public void Should_find_sequence_in_range(string value,
             string find, int offset, int length, int index)
         {
             var findBytes = find.ToBytes();

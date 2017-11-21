@@ -32,33 +32,27 @@ namespace Graphite.Http
         {
             if (_size < compare.Length) Fill();
 
-            return _buffer.ContainsAt(compare, _offset);
+            return _buffer.ContainsSequenceAt(compare, _offset);
         }
 
         public ReadResult Read(byte[] buffer, int offset, int count,
             params byte[][] invalidTokens)
         {
-            return ReadTo(null, (b, o, c) => !invalidTokens
-                .Any(x => b.ContainsAt(x, o, c)));
+            return ReadTo(buffer, offset, count, null, invalidTokens);
         }
 
         public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
         {
-            return ReadTo(delimiter, (b, o, c) => !validChars
-                .Select(x => new [] { (byte)x })
-                .Any(x => b.ContainsAt(x, o, c)));
+            var validBytes = validChars.Select(c => (byte) c).ToArray();
+            return ReadTo(delimiter, (b, o, c) => b.OnlyContains(validBytes, o, c), 1);
         }
 
-        public ReadResult ReadTo(byte[] delimiter, Func<byte[], int, int, bool> validate = null)
+        public ReadResult ReadTo(byte[] buffer, int offset, int count, 
+            byte[] delimiter, params byte[][] invalidTokens)
         {
-            var read = 0;
-            while (true)
-            {
-                var result = ReadTo(null, 0, DefaultBufferSize, delimiter, validate);
-                read += result.Read;
-                if (result.Read == 0 || result.EndOfSection || result.EndOfStream)
-                    return new ReadResult(read, result.EndOfSection, result.EndOfStream);
-            }
+            return ReadTo(buffer, offset, count, delimiter, 
+                (b, o, c) => !invalidTokens.Any(x => b.ContainsSequence(x, o, c)),
+                invalidTokens.Any() ? invalidTokens.Max(x => x.Length) : 0);
         }
 
         public class ReadResult
@@ -76,26 +70,31 @@ namespace Graphite.Http
             public bool EndOfStream { get; }
             public bool Invalid { get; }
         }
-
-        public ReadResult ReadTo(byte[] buffer, int offset, int count, 
-            byte[] delimiter, params byte[][] invalidTokens)
+        
+        private ReadResult ReadTo(byte[] delimiter, Func<byte[], int, int, bool> validate, int minimumPadding)
         {
-            return ReadTo(buffer, offset, count, delimiter, 
-                (b, o, c) => !invalidTokens.Any(x => b.Contains(x, o, c)));
+            var read = 0;
+            while (true)
+            {
+                var result = ReadTo(null, 0, DefaultBufferSize, delimiter, validate, minimumPadding);
+                read += result.Read;
+                if (result.Read == 0 || result.Invalid || result.EndOfSection || result.EndOfStream)
+                    return new ReadResult(read, result.EndOfSection, 
+                        result.EndOfStream, result.Invalid);
+            }
         }
         
         private ReadResult ReadTo(byte[] buffer, int offset, int count, byte[] delimiter,
-            Func<byte[], int, int, bool> validate = null)
+            Func<byte[], int, int, bool> validate, int minimumPadding)
         {
             if (offset < 0) throw new ArgumentException($"Offset must be greater than zero but was {offset}.");
             if (count < 1) throw new ArgumentException($"Count must be greater than 1 but was {count}.");
+            if (_buffer.Length < minimumPadding)
+                throw new ArgumentException("Buffer must be greater than or equal to the minimum padding.");
 
-            BeginingOfStream = false;
+            minimumPadding = Math.Max(Math.Max(delimiter?.Length ?? 0, minimumPadding) - 1, 0);
 
-            if (delimiter == null || delimiter.Length == 0)
-                return new ReadResult(0, false, _end);
-
-            if (_size < delimiter.Length)
+            if (_size <= minimumPadding)
             {
                 Fill();
                 if (_end && _size == 0) return new ReadResult(0, true, true);
@@ -103,36 +102,37 @@ namespace Graphite.Http
 
             var maxSize = Math.Min(count, _size);
 
-            var endOfLine = _buffer.IndexOfSequence(delimiter, _offset, maxSize);
+            var delimiterIndex = _buffer.IndexOfSequence(delimiter, _offset, maxSize);
 
-            if (endOfLine == 0)
+            if (delimiterIndex == 0)
             {
                 ShiftOffset(delimiter.Length);
                 return new ReadResult(0, true, _end);
             }
 
-            var readSize = endOfLine > 0
-                ? endOfLine
-                : Math.Min(maxSize, _size - delimiter.Length + 1);
+            var readSize = delimiterIndex > 0
+                ? delimiterIndex
+                : Math.Min(maxSize, _size - minimumPadding);
 
             if (readSize <= 0) readSize = maxSize;
 
             if (!(validate?.Invoke(_buffer, _offset, readSize) ?? true))
-                return new ReadResult(0, false, _end);
+                return new ReadResult(0, false, _end, true);
 
             if (buffer != null)
                 Array.Copy(_buffer, _offset, buffer, offset, readSize);
 
-            var readToEndOfLine = _offset + readSize == endOfLine || (_end && _size - readSize == 0);
+            var endOfSection = _offset + readSize == delimiterIndex || (_end && _size - readSize == 0);
 
             ShiftOffset(readSize);
-            if (readToEndOfLine && endOfLine >= 0) ShiftOffset(delimiter.Length);
+            if (endOfSection && delimiterIndex >= 0) ShiftOffset(delimiter.Length);
 
-            return new ReadResult(readSize, readToEndOfLine, _end);
+            return new ReadResult(readSize, endOfSection, _end);
         }
 
         private void ShiftOffset(int count)
         {
+            BeginingOfStream = false;
             _size -= count;
             _offset = _size == 0 ? 0 : _offset + count;
         }

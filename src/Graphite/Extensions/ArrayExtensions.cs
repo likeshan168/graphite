@@ -87,22 +87,39 @@ namespace Graphite.Extensions
             return target;
         }
 
-        public static bool ContainsAt(this byte[] source, byte[] compare, int offset, int? length = null)
+        public static bool ContainsSequenceAt(this byte[] source, byte[] find, int offset)
         {
-            length = length ?? compare.Length;
-            if (offset < 0 || source == null || source.Length == 0 ||
-                compare == null || length == 0 ||
-                length > source.Length - offset) return false;
+            if (offset < 0 || source.IsNullOrEmpty() || find.IsNullOrEmpty() ||
+                find.Length > source.Length - offset) return false;
 
-            for (var index = 0; index < length; index++)
+            for (var index = 0; index < find.Length; index++)
             {
-                if (source[index + offset] != compare[index]) return false;
+                if (source[index + offset] != find[index]) return false;
             }
 
             return true;
         }
 
-        public static bool Contains(this byte[] source, 
+        public static bool OnlyContains(this byte[] source, 
+            byte[] find, int offset, int length)
+        {
+            if (source.IsNullOrEmpty() || find.IsNullOrEmpty() || 
+                offset < 0 || offset > source.Length || length < 1)
+                return true;
+
+            length = Math.Min(source.Length - offset, length);
+
+            if (length < 1) return true;
+
+            for (var index = 0; index < length; index++)
+            {
+                if (!find.Contains(source[index + offset])) return false;
+            }
+
+            return true;
+        }
+
+        public static bool ContainsSequence(this byte[] source, 
             byte[] find, int offset, int length)
         {
             return IndexOfSequence(source, find, offset, length) > -1;
@@ -111,15 +128,13 @@ namespace Graphite.Extensions
         public static int IndexOfSequence(this byte[] source,
             byte[] find, int offset, int length)
         {
-            if (offset < 0 || length < 0 || source == null || 
-                source.Length == 0) return -1;
-
-            if (find == null || find.Length == 0 ||
-                find.Length > source.Length - offset) return -1;
+            if (offset < 0 || length < 0 || source.IsNullOrEmpty() ||
+                find.IsNullOrEmpty() || find.Length > source.Length - offset)
+                return -1;
 
             for (var position = 0; position < length; position++)
             {
-                if (source.ContainsAt(find, offset + position))
+                if (source.ContainsSequenceAt(find, offset + position))
                     return position;
             }
 
