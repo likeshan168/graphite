@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using Graphite.Extensions;
 using NUnit.Framework;
 using Should;

@@ -32,7 +32,7 @@ namespace Graphite.Http
         {
             if (_size < compare.Length) Fill();
 
-            return _buffer.ContainsSequenceAt(compare, _offset);
+            return _size >= compare.Length && _buffer.ContainsSequenceAt(compare, _offset);
         }
 
         public ReadResult Read(byte[] buffer, int offset, int count,

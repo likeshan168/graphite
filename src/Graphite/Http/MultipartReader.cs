@@ -17,6 +17,12 @@ namespace Graphite.Http
     public class MultipartReader
     {
         // Implementation of RFC 2046 5.1.1 (except for nested multitype)
+        
+        public const string ErrorBoundaryNotPreceededByCRLF = "Boundary not preceeded by CRLF.";
+        public const string ErrorHeadersNotFollowedByEmptyLine = "Headers not followed by empty line.";
+        public const string ErrorUnexpectedEndOfStream = "Unexpected end of stream.";
+        public const string ErrorInvalidCharactersFollowingBoundary = "Invalid characters following boundary.";
+        public const string ErrorBoundaryFoundAfterClosingBoundary = "Boundary found after closing boundary.";
 
         private static readonly byte[] CRLF = "\r\n".ToBytes();
         private static readonly byte[] BodyDelimiter = "\r\n\r\n".ToBytes();
@@ -80,8 +86,15 @@ namespace Graphite.Http
                 EndOfPart = result.EndOfSection;
             }
 
-            public ReadResult(string errorMessage,
-                DelimitedBuffer.ReadResult result)
+            public ReadResult(string errorMessage)
+            {
+                Error = errorMessage.IsNotNullOrEmpty();
+                ErrorMessage = errorMessage;
+            }
+
+            public ReadResult(
+                DelimitedBuffer.ReadResult result,
+                string errorMessage)
                 : this(null, result, errorMessage)  { }
 
             public int Read { get; }
@@ -91,10 +104,6 @@ namespace Graphite.Http
             public bool Error { get; }
             public string ErrorMessage { get; }
         }
-
-
-
-
 
         public ReadResult Read(byte[] buffer, int offset, int count)
         {
@@ -117,11 +126,11 @@ namespace Graphite.Http
                 : _buffer.ReadTo(buffer, offset, count, _boundaryLine, _boundary);
 
             if (preambleResult.Invalid)
-                return new ReadResult("Boundary not preceeded by CRLF.", preambleResult);
+                return new ReadResult(preambleResult, ErrorBoundaryNotPreceededByCRLF);
 
             if (preambleResult.EndOfStream)
                 return new ReadResult(MultipartSection.Preamble, preambleResult, 
-                    "Missing closing boundary.");
+                    ErrorUnexpectedEndOfStream);
 
             if (!preambleResult.EndOfSection)
                 return new ReadResult(MultipartSection.Preamble, preambleResult);
@@ -129,8 +138,7 @@ namespace Graphite.Http
             var boundaryResult = ReadBoundary();
                     
             if (boundaryResult.Error)
-                return new ReadResult(MultipartSection.Preamble, preambleResult,
-                    boundaryResult.ErrorMessage);
+                return new ReadResult(preambleResult, boundaryResult.ErrorMessage);
 
             return new ReadResult(MultipartSection.Preamble, preambleResult);
         }
@@ -141,10 +149,10 @@ namespace Graphite.Http
                 count, BodyDelimiter, _boundaryLine, _boundary);
 
             if (result.Invalid)
-                return new ReadResult("Headers not followed by empty line.", result);
+                return new ReadResult(result, ErrorHeadersNotFollowedByEmptyLine);
 
             if (result.EndOfStream)
-                return new ReadResult("Unexpected end of stream.", result);
+                return new ReadResult(result, ErrorUnexpectedEndOfStream);
 
             if (result.EndOfSection) CurrentSection = MultipartSection.Body;
 
@@ -156,10 +164,10 @@ namespace Graphite.Http
             var bodyResult = _buffer.ReadTo(buffer, offset, count, _boundaryLine, _boundary);
 
             if (bodyResult.Invalid)
-                return new ReadResult("Boundary not in its own line.", bodyResult);
+                return new ReadResult(bodyResult, ErrorBoundaryNotPreceededByCRLF);
 
             if (bodyResult.EndOfStream)
-                return new ReadResult("Unexpected end of stream.", bodyResult);
+                return new ReadResult(bodyResult, ErrorUnexpectedEndOfStream);
 
             if (!bodyResult.EndOfSection)
                 return new ReadResult(MultipartSection.Body, bodyResult);
@@ -177,13 +185,18 @@ namespace Graphite.Http
         {
             var closingBoundary = _buffer.StartsWith(EpiloguePostfix);
 
+            if (closingBoundary && CurrentSection == MultipartSection.Preamble)
+                return new ReadResult(ErrorUnexpectedEndOfStream);
+
+            if (closingBoundary) _buffer.ReadTo(EpiloguePostfix);
+
             var result = _buffer.ReadTo(CRLF, ' ', '\r', '\n', '\t');
 
             if (result.Invalid)
-                return new ReadResult("Invalid characters following boundary.", result);
+                return new ReadResult(result, ErrorInvalidCharactersFollowingBoundary);
 
             if (result.EndOfStream && !closingBoundary)
-                return new ReadResult("Unexpected end of stream.", result);
+                return new ReadResult(result, ErrorUnexpectedEndOfStream);
 
             if (closingBoundary)
                 return new ReadResult(CurrentSection = MultipartSection.Epilogue, result);
@@ -191,10 +204,7 @@ namespace Graphite.Http
             if (!_buffer.StartsWith(CRLF))
                 return new ReadResult(CurrentSection = MultipartSection.Headers, result);
 
-            var bodyResult = _buffer.ReadTo(CRLF);
-
-            if (bodyResult.EndOfStream)
-                return new ReadResult("Unexpected end of stream.", bodyResult);
+            _buffer.ReadTo(CRLF);
 
             return new ReadResult(CurrentSection = MultipartSection.Body, result);
         }
@@ -207,73 +217,13 @@ namespace Graphite.Http
             var result = _buffer.Read(buffer, offset, count, _boundaryLine, _boundary);
 
             if (result.Invalid)
-                return new ReadResult("Boundary found after closing boundary.", result);
+                return new ReadResult(MultipartSection.Epilogue, 
+                    result, ErrorBoundaryFoundAfterClosingBoundary);
 
             EndOfStream = result.EndOfStream;
             EndOfPart = result.EndOfSection;
 
             return new ReadResult(MultipartSection.Epilogue, result);
-        }
-
-
-
-
-
-
-
-        public ReadResult Read2(byte[] buffer, int offset, int count)
-        {
-            var delimiter = CurrentSection == MultipartSection.Headers
-                ? BodyDelimiter
-                : (_buffer.StartsWith(_boundary)
-                    ? _boundary
-                    : _boundaryLine);
-
-            var result = _buffer.ReadTo(buffer, offset, count, delimiter);
-
-            var multipartResult = new ReadResult(CurrentSection, result);
-
-            if (!result.EndOfStream && result.EndOfSection && 
-                CurrentSection != MultipartSection.Epilogue)
-                SetCurrentSection();
-            
-            EndOfStream = multipartResult.EndOfStream;
-            EndOfPart = multipartResult.EndOfPart;
-            
-            return multipartResult;
-        }
-
-        private void SetCurrentSection()
-        {
-            if (CurrentSection == MultipartSection.Headers)
-            {
-                CurrentSection = MultipartSection.Body;
-                return;
-            }
-
-            if (_buffer.StartsWith(EpiloguePostfix))
-            {
-                _buffer.ReadTo(CRLF);
-                CurrentSection = MultipartSection.Epilogue;
-                return;
-            }
-
-            var result = _buffer.ReadTo(CRLF);
-
-            if (result.EndOfStream)
-            {
-                CurrentSection = MultipartSection.Epilogue;
-            }
-            else if (_buffer.StartsWith(CRLF))
-            {
-                _buffer.ReadTo(CRLF);
-                CurrentSection = MultipartSection.Body;
-            }
-            else if (_buffer.StartsWith(_boundary))
-            {
-                CurrentSection = MultipartSection.Body;
-            }
-            else CurrentSection = MultipartSection.Headers;
         }
     }
 }

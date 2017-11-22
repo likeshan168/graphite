@@ -26,6 +26,18 @@ namespace Tests.Unit.Http
 
             buffer.StartsWith(compare.ToBytes()).ShouldEqual(expected);
         }
+
+        [Test]
+        public void Should_not_start_with_comparison_that_exceeds_buffer_size()
+        {
+            var data = "fark".ToBytes();
+            var stream = new MemoryStream(data);
+            var buffer = new DelimitedBuffer(stream, 4);
+
+            buffer.ReadTo(data);
+
+            buffer.StartsWith(data).ShouldBeFalse();
+        }
         
         //        Data     Buffer  Delimiter   Invalid EOP1    EOS1   Read1 Invalid1   EOP2   EOS2   Read2  Invalid2  Remaining
         [TestCase("",        1,    "",         "",     true,   true,  "",   false,     true,  true,  "",    false,    "")]
