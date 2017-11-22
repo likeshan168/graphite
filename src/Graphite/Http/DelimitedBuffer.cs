@@ -41,9 +41,8 @@ namespace Graphite.Http
             return ReadTo(buffer, offset, count, null, invalidTokens);
         }
 
-        public ReadResult ReadTo(byte[] delimiter, params char[] validChars)
+        public ReadResult ReadTo(byte[] delimiter, params byte[] validBytes)
         {
-            var validBytes = validChars.Select(c => (byte) c).ToArray();
             return ReadTo(delimiter, (b, o, c) => b.OnlyContains(validBytes, o, c), 1);
         }
 

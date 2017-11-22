@@ -24,6 +24,7 @@ namespace Graphite.Http
         public const string ErrorInvalidCharactersFollowingBoundary = "Invalid characters following boundary.";
         public const string ErrorBoundaryFoundAfterClosingBoundary = "Boundary found after closing boundary.";
 
+        private static readonly byte[] LinearWhitespace = " \r\n\t".ToBytes();
         private static readonly byte[] CRLF = "\r\n".ToBytes();
         private static readonly byte[] BodyDelimiter = "\r\n\r\n".ToBytes();
         private static readonly byte[] EpiloguePostfix = "--".ToBytes();
@@ -54,7 +55,7 @@ namespace Graphite.Http
             while (true)
             {
                 var result = Read(null, 0, DelimitedBuffer.DefaultBufferSize);
-                if (result.EndOfPart) return result;
+                if (result.EndOfPart || result.Error) return result;
             }
         }
 
@@ -79,7 +80,7 @@ namespace Graphite.Http
                 if (result.Read > 0)
                     data += (encoding ?? Encoding.UTF8)
                         .GetString(buffer, 0, result.Read);
-                if (result.EndOfPart) return new 
+                if (result.EndOfPart || result.Error) return new 
                     ReadStringResult(result, data);
             }
         }
@@ -91,8 +92,8 @@ namespace Graphite.Http
             {
                 Read = result.Read;
                 Section = result.Section;
-                Error = errorMessage.IsNotNullOrEmpty();
-                ErrorMessage = errorMessage;
+                ErrorMessage = errorMessage ?? result.ErrorMessage;
+                Error = ErrorMessage.IsNotNullOrEmpty();
                 EndOfStream = result.EndOfStream;
                 EndOfPart = result.EndOfPart;
             }
@@ -103,8 +104,8 @@ namespace Graphite.Http
             {
                 Read = result.Read;
                 Section = section;
-                Error = errorMessage.IsNotNullOrEmpty();
                 ErrorMessage = errorMessage;
+                Error = ErrorMessage.IsNotNullOrEmpty();
                 EndOfStream = result.EndOfStream;
                 EndOfPart = result.EndOfSection;
             }
@@ -213,7 +214,7 @@ namespace Graphite.Http
 
             if (closingBoundary) _buffer.ReadTo(EpiloguePostfix);
 
-            var result = _buffer.ReadTo(CRLF, ' ', '\r', '\n', '\t');
+            var result = _buffer.ReadTo(CRLF, LinearWhitespace);
 
             if (result.Invalid)
                 return new ReadResult(result, ErrorInvalidCharactersFollowingBoundary);

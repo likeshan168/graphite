@@ -163,14 +163,14 @@ namespace Tests.Unit.Http
             var stream = new MemoryStream(data.ToBytes());
             var buffer = new DelimitedBuffer(stream, bufferSize);
 
-            var result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToCharArray());
+            var result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToBytes());
 
             result.Invalid.ShouldEqual(invalid1);
             result.EndOfSection.ShouldEqual(endOfSection1);
             result.EndOfStream.ShouldEqual(endOfStream1);
             result.Read.ShouldEqual(read1);
 
-            result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToCharArray());
+            result = buffer.ReadTo(delimiter.ToBytes(), validChars.ToBytes());
 
             result.Invalid.ShouldEqual(invalid2);
             result.EndOfSection.ShouldEqual(endOfSection2);

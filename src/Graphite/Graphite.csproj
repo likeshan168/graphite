@@ -66,6 +66,7 @@
     <Compile Include="Binding\MultipartPartContent.cs" />
     <Compile Include="Binding\ParameterBinder.cs" />
     <Compile Include="Actions\IResponseStatus.cs" />
+    <Compile Include="Exceptions\BadRequestException.cs" />
     <Compile Include="Exceptions\ExceptionHandlerWrapper.cs" />
     <Compile Include="Exceptions\ExceptionLoggerWrapper.cs" />
     <Compile Include="Exceptions\Extensions.cs" />

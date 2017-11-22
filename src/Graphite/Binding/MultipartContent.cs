@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http.Headers;
+using Graphite.Exceptions;
 using Graphite.Http;
 
 namespace Graphite.Binding
@@ -11,6 +12,7 @@ namespace Graphite.Binding
         private readonly MultipartReader _reader;
         private MultipartPartContent _peeked;
         private IEnumerator<InputStream> _enumerator;
+        private MultipartPartContent _currentPart;
 
         public MultipartContent(Stream stream, HttpContentHeaders headers, Configuration configuration)
         {
@@ -47,14 +49,15 @@ namespace Graphite.Binding
                 .CurrentSection != MultipartSection.Epilogue)
             {
                 var part = PopPeeked() ?? GetPart();
-                //if (part.Error) ??? // TODO: Add behavior
+                if (part.Error) throw new BadRequestException(part.ErrorMessage);
                 yield return part.CreateInputStream();
             }
         }
 
         private MultipartPartContent GetPart()
         {
-            if (!_reader.EndOfPart)
+            if (_reader.CurrentSection == MultipartSection.Preamble || 
+                !(_currentPart?.ReadComplete ?? true))
             {
                 var result = _reader.ReadToNextPart();
                 if (result.Error)
@@ -65,8 +68,10 @@ namespace Graphite.Binding
                 ? _reader.ReadString()
                 : null;
 
-            return new MultipartPartContent(_reader, headers?.Data,
+            _currentPart = new MultipartPartContent(_reader, headers?.Data,
                 headers?.Error ?? false, headers?.ErrorMessage);
+
+            return _currentPart;
         }
 
         public IEnumerator<InputStream> GetEnumerator()

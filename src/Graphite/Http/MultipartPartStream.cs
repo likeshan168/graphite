@@ -6,7 +6,6 @@ namespace Graphite.Http
     public class MultipartPartStream : Stream
     {
         private readonly MultipartReader _reader;
-        private bool _endOfPart;
 
         public MultipartPartStream(MultipartReader reader)
         {
@@ -16,12 +15,13 @@ namespace Graphite.Http
         public override bool CanRead { get; } = true;
         public override bool CanSeek { get; } = false;
         public override bool CanWrite { get; } = false;
+        public bool EndOfPart { get; private set; }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (_endOfPart) return 0;
+            if (EndOfPart) return 0;
             var result = _reader.Read(buffer, offset, count);
-            _endOfPart = result.EndOfPart;
+            EndOfPart = result.EndOfPart;
             return result.Read;
         }
         

@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -35,6 +34,7 @@ namespace Graphite.Binding
         public string Name { get; private set; }
         public bool Error { get; }
         public string ErrorMessage { get; }
+        public bool ReadComplete => _stream.EndOfPart;
 
         private void ParseHeaders(string headers)
         {

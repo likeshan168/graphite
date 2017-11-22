@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using Graphite.Extensions;
 using Graphite.Http;
 using NUnit.Framework;
@@ -326,6 +327,34 @@ namespace Tests.Acceptance
             file.ContentType.ShouldEqual(MimeTypes.ImagePng);
             file.Encoding.ShouldBeEmpty();
             file.Length.ShouldEqual(stream2Length);
+        }
+
+        [Test]
+        public void Should_return_400_when_multipart_read_error_occurs(
+            [Values(Host.Owin, Host.IISExpress)] Host host)
+        {
+            var result = Http.ForHost(host).PostString(
+                $"{BaseUrl}SingleValueToParameter", 
+                "--some-boundary\r\n" +
+                "Content-Disposition: form-data; name=value\r\n" +
+                "\r\n" +
+                "5" +
+                "--some-boundary--", 
+                requestHeaders: x => x.
+                    Accept.Add(new MediaTypeWithQualityHeaderValue(MimeTypes.ApplicationJson)),
+                contentHeaders: x =>
+                {
+                    x.ContentType = new MediaTypeWithQualityHeaderValue(MimeTypes.MultipartFormData)
+                    {
+                        Parameters =
+                        {
+                            new NameValueHeaderValue("boundary", "\"some-boundary\"")
+                        }
+                    };
+                });
+            
+            result.Status.ShouldEqual(HttpStatusCode.BadRequest);
+            result.ReasonPhrase.ShouldEqual("Boundary not preceeded by CRLF.");
         }
     }
 }
