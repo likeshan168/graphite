@@ -47,7 +47,7 @@ namespace Graphite.Binding
                 .CurrentSection != MultipartSection.Epilogue)
             {
                 var part = PopPeeked() ?? GetPart();
-                if (part.Error) ??? // TODO: Add behavior
+                //if (part.Error) ??? // TODO: Add behavior
                 yield return part.CreateInputStream();
             }
         }

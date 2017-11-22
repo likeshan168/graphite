@@ -54,19 +54,16 @@ namespace Tests.Unit.Http
                 $"{file2.ToString(2.MB(), Encoding.ASCII)}\r\n" +
                 "--some-boundary--", 750.KB());
 
-            results.Count.ShouldEqual(11);
+            results.Count.ShouldEqual(8);
 
             Should_match_section(results[0], "", MultipartSection.Preamble, true, false);
-            Should_match_section(results[1], file1.ToString(768000, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[2], file1.ToString(768000, 15, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[3], file1.ToString(768015, 280561, Encoding.ASCII), MultipartSection.Body, true, false);
-            Should_match_section(results[4], file2.ToString(487452, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[5], file2.ToString(487452, 768000, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[6], file2.ToString(487452 + 768000, 34, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[7], file2.ToString(487452 + 768000 + 34, 768000, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[8], file2.ToString(487452 + 768000 + 34 + 768000, 34, Encoding.ASCII), MultipartSection.Body, false, false);
-            Should_match_section(results[9], file2.ToString(487452 + 768000 + 34 + 768000 + 34, 73632, Encoding.ASCII), MultipartSection.Body, true, false);
-            Should_match_section(results[10], "", MultipartSection.Epilogue, true, true);
+            Should_match_section(results[1], file1.ToString(767975, Encoding.ASCII), MultipartSection.Body, false, false);
+            Should_match_section(results[2], file1.ToString(767975, 280601, Encoding.ASCII), MultipartSection.Body, true, false);
+            Should_match_section(results[3], file2.ToString(487372, Encoding.ASCII), MultipartSection.Body, false, false);
+            Should_match_section(results[4], file2.ToString(487372, 767994, Encoding.ASCII), MultipartSection.Body, false, false);
+            Should_match_section(results[5], file2.ToString(487372 + 767994, 767994, Encoding.ASCII), MultipartSection.Body, false, false);
+            Should_match_section(results[6], file2.ToString(487372 + 767994 + 767994, 73792, Encoding.ASCII), MultipartSection.Body, true, false);
+            Should_match_section(results[7], "", MultipartSection.Epilogue, true, true);
         }
 
         [Test]
@@ -332,7 +329,7 @@ namespace Tests.Unit.Http
             content.Headers.ContentType.Parameters.Add(
                 new NameValueHeaderValue("boundary", "some-boundary"));
             var reader =  new MultipartReader(content.ReadAsStreamAsync()
-                .Result, content.Headers, bufferSize + 50);
+                .Result, content.Headers, bufferSize + 10);
             var results = new List<ReadResult>();
             var buffer = new byte[bufferSize];
             var outputCount = 0;
