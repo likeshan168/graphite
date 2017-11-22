@@ -14,13 +14,27 @@ namespace Graphite.Binding
     {
         private readonly MultipartPartStream _stream;
 
-        public MultipartPartContent(MultipartReader reader, string headers)
+        public MultipartPartContent(string errorMessage)
         {
+            Error = true;
+            ErrorMessage = errorMessage;
+        }
+
+        public MultipartPartContent(MultipartReader reader, 
+            string headers, bool error, string errorMessage)
+        {
+            Error = error;
+            ErrorMessage = errorMessage;
+
+            if (error) return;
+
             _stream = new MultipartPartStream(reader);
             ParseHeaders(headers);
         }
 
         public string Name { get; private set; }
+        public bool Error { get; }
+        public string ErrorMessage { get; }
 
         private void ParseHeaders(string headers)
         {

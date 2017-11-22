@@ -52,6 +52,8 @@ namespace Graphite.Binding
             {
                 var content = multipartContent.Peek();
 
+                if (content.Error) return new BindResult(BindingStatus.Failure, content.ErrorMessage);
+
                 if (route.HasRequest)
                 {
                     var result = await Read(content, requestParameter, context);

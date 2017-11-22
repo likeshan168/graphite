@@ -46,21 +46,27 @@ namespace Graphite.Binding
             while (!_reader.EndOfStream && _reader
                 .CurrentSection != MultipartSection.Epilogue)
             {
-                yield return (PopPeeked() ?? GetPart())
-                    .CreateInputStream();
+                var part = PopPeeked() ?? GetPart();
+                if (part.Error) ??? // TODO: Add behavior
+                yield return part.CreateInputStream();
             }
         }
 
         private MultipartPartContent GetPart()
         {
             if (!_reader.EndOfPart)
-                _reader.ReadToNextPart();
+            {
+                var result = _reader.ReadToNextPart();
+                if (result.Error)
+                    return new MultipartPartContent(result.ErrorMessage);
+            }
 
             var headers = _reader.CurrentSection == MultipartSection.Headers
                 ? _reader.ReadString()
                 : null;
 
-            return new MultipartPartContent(_reader, headers);
+            return new MultipartPartContent(_reader, headers?.Data,
+                headers?.Error ?? false, headers?.ErrorMessage);
         }
 
         public IEnumerator<InputStream> GetEnumerator()

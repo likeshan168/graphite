@@ -49,16 +49,27 @@ namespace Graphite.Http
         public bool EndOfStream { get; private set; }
         public MultipartSection CurrentSection { get; private set; } = MultipartSection.Preamble;
 
-        public void ReadToNextPart()
+        public ReadResult ReadToNextPart()
         {
             while (true)
             {
                 var result = Read(null, 0, DelimitedBuffer.DefaultBufferSize);
-                if (result.EndOfPart) return;
+                if (result.EndOfPart) return result;
             }
         }
 
-        public string ReadString(Encoding encoding = null)
+        public class ReadStringResult : ReadResult
+        {
+            public ReadStringResult(ReadResult result, string data)
+                : base(result)
+            {
+                Data = data;
+            }
+
+            public string Data { get; }
+        }
+
+        public ReadStringResult ReadString(Encoding encoding = null)
         {
             var buffer = new byte[DelimitedBuffer.DefaultBufferSize];
             var data = "";
@@ -68,12 +79,24 @@ namespace Graphite.Http
                 if (result.Read > 0)
                     data += (encoding ?? Encoding.UTF8)
                         .GetString(buffer, 0, result.Read);
-                if (result.EndOfPart) return data;
+                if (result.EndOfPart) return new 
+                    ReadStringResult(result, data);
             }
         }
 
         public class ReadResult
         {
+            public ReadResult(ReadResult result, 
+                string errorMessage = null)
+            {
+                Read = result.Read;
+                Section = result.Section;
+                Error = errorMessage.IsNotNullOrEmpty();
+                ErrorMessage = errorMessage;
+                EndOfStream = result.EndOfStream;
+                EndOfPart = result.EndOfPart;
+            }
+
             public ReadResult(MultipartSection? section, 
                 DelimitedBuffer.ReadResult result, 
                 string errorMessage = null)
