@@ -118,7 +118,6 @@
     <Compile Include="Extensions\NumericExtensions.cs" />
     <Compile Include="GraphiteException.cs" />
     <Compile Include="Hosting\IPathProvider.cs" />
-    <Compile Include="Collections\DictionaryWrapper.cs" />
     <Compile Include="Http\DebugExceptionHandler.cs" />
     <Compile Include="Http\Extensions.cs" />
     <Compile Include="Http\Headers.cs" />
@@ -127,7 +126,7 @@
     <Compile Include="Http\DelimitedBuffer.cs" />
     <Compile Include="Http\MultipartReader.cs" />
     <Compile Include="Http\TextResult.cs" />
-    <Compile Include="Linq\LookupWrapper.cs" />
+    <Compile Include="Linq\ValueGrouping.cs" />
     <Compile Include="Http\RemoteHost.cs" />
     <Compile Include="Readers\Extensions.cs" />
     <Compile Include="Binding\InputBody.cs" />

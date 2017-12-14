@@ -1,25 +1,59 @@
-﻿using System;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Http;
-using System.Web.Http.Controllers;
-using Graphite.Collections;
+using Graphite.Extensions;
+using Graphite.Linq;
+using Graphite.Routing;
 
 namespace Graphite.Http
 {
-    public class UrlParameters : DictionaryWrapper<string, object>
+    public interface IUrlParameters : ILookup<string, object> { }
+
+    public class UrlParameters : IUrlParameters
     {
-        public UrlParameters() : base(null) { }
+        private readonly IEnumerable<KeyValuePair<string, object>> _parameters;
+        private readonly RouteDescriptor _routeDescriptor;
 
-        public UrlParameters(IDictionary<string, object> source) : 
-            base(new ReadOnlyDictionary<string, object>(new Dictionary<string, object>(
-                source, StringComparer.OrdinalIgnoreCase))) { }
-
-        public static UrlParameters CreateFrom(HttpRequestMessage message)
+        public UrlParameters(HttpRequestMessage request, RouteDescriptor routeDescriptor)
         {
-            return new UrlParameters(message.GetRequestContext().RouteData.Values);
+            _routeDescriptor = routeDescriptor;
+            var parameters = request.GetRequestContext().RouteData.Values;
+            _parameters = _routeDescriptor.UrlParameters.Any(x => x.IsWildcard)
+                ? parameters.SelectMany(ExpandWildcardParameters)
+                : parameters;
+
         }
 
-        public override object this[string key] => TryGetValue(key, out var value) ? value : null;
+        public int Count => _parameters.Count();
+        
+        public bool Contains(string key) => _parameters.Any(x => x.Key.EqualsUncase(key));
+        
+        public IEnumerable<object> this[string key] => _parameters
+            .Where(x => x.Key.EqualsUncase(key)).Select(x => x.Value);
+
+        public IEnumerator<IGrouping<string, object>> GetEnumerator()
+        {
+            foreach (var parameter in _parameters)
+            {
+                yield return new ValueGrouping<string, object>(parameter.Key, parameter.Value);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        private IEnumerable<KeyValuePair<string, object>> ExpandWildcardParameters
+            (KeyValuePair<string, object> value)
+        {
+            var wildcard = _routeDescriptor.UrlParameters.FirstOrDefault(x => 
+                x.IsWildcard && x.Name.EqualsUncase(value.Key));
+            return wildcard == null || !(wildcard.TypeDescriptor.IsArray || 
+                    wildcard.TypeDescriptor.IsGenericListCastable)
+                ? new[] { value }
+                : value.Value.Split('/').ToKeyValuePairs(value.Key);
+        }
     }
 }

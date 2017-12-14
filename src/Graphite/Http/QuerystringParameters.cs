@@ -1,22 +1,38 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using Graphite.Linq;
+using Graphite.Extensions;
 
 namespace Graphite.Http
 {
-    public class QuerystringParameters : LookupWrapper<string, object>
+    public interface IQuerystringParameters : ILookup<string, object> { }
+
+    public class QuerystringParameters : IQuerystringParameters
     {
-        public QuerystringParameters() : base(null, null) { }
+        private readonly IEnumerable<KeyValuePair<string, string>> _parameters;
 
-        public QuerystringParameters(IEnumerable<KeyValuePair<string, string>> source):
-            base(source?.Select(x => new KeyValuePair<string, object>(x.Key, x.Value)), 
-                StringComparer.OrdinalIgnoreCase) { }
-
-        public static QuerystringParameters CreateFrom(HttpRequestMessage message)
+        public QuerystringParameters(HttpRequestMessage request)
         {
-            return new QuerystringParameters(message.GetQueryNameValuePairs());
+            _parameters = request.GetQueryNameValuePairs();
+        }
+
+        public bool Contains(string key) => _parameters.Any(x => x.Key.EqualsUncase(key));
+
+        public int Count => _parameters.Count();
+
+        public IEnumerable<object> this[string key] => _parameters
+            .Where(x => x.Key.EqualsUncase(key)).Select(x => x.Value);
+
+        public IEnumerator<IGrouping<string, object>> GetEnumerator()
+        {
+            return _parameters.GroupBy(x => x.Key, x => x.Value)
+                .Cast<IGrouping<string, object>>().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

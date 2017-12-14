@@ -54,8 +54,8 @@ namespace Tests.Unit.Behaviors
                 ActionMethod actionMethod,
                 RouteDescriptor routeDescriptor,
                 RequestCancellation requestCancellation,
-                UrlParameters urlParameters,
-                QuerystringParameters querystringParameters,
+                IUrlParameters urlParameters,
+                IQuerystringParameters querystringParameters,
                 SomeType someInstance)
             {
                 BehaviorChain = behaviorChainChain;
@@ -122,7 +122,7 @@ namespace Tests.Unit.Behaviors
             var urlParameters = log.OfType<UrlParameters>().FirstOrDefault();
             urlParameters.ShouldNotBeNull();
 
-            urlParameters["urlParam"].ShouldEqual("urlparamvalue");
+            urlParameters["urlParam"].ShouldOnlyContain("urlparamvalue");
 
             var querystringParameters = log.OfType<QuerystringParameters>().FirstOrDefault();
             querystringParameters.ShouldNotBeNull();
