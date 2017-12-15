@@ -201,7 +201,7 @@ namespace Tests.Common
 
         public IUrlParameters GetUrlParameters()
         {
-            return new UrlParameters(GetHttpRequestMessage());
+            return new UrlParameters(GetHttpRequestMessage(), GetRouteDescriptor());
         }
 
         public ActionDescriptor GetActionDescriptor()

@@ -1,38 +1,59 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using Graphite.Extensions;
+using Graphite.Linq;
+using Graphite.Routing;
 
 namespace Graphite.Http
 {
     public interface IQuerystringParameters : ILookup<string, object> { }
 
-    public class QuerystringParameters : IQuerystringParameters
+    [AttributeUsage(AttributeTargets.Parameter)]
+    public class DelimitedAttribute : Attribute
     {
-        private readonly IEnumerable<KeyValuePair<string, string>> _parameters;
-
-        public QuerystringParameters(HttpRequestMessage request)
+        public DelimitedAttribute(string delimiter = ",")
         {
-            _parameters = request.GetQueryNameValuePairs();
+            Delimiter = delimiter;
         }
 
-        public bool Contains(string key) => _parameters.Any(x => x.Key.EqualsUncase(key));
-
-        public int Count => _parameters.Count();
-
-        public IEnumerable<object> this[string key] => _parameters
-            .Where(x => x.Key.EqualsUncase(key)).Select(x => x.Value);
-
-        public IEnumerator<IGrouping<string, object>> GetEnumerator()
+        public string Delimiter { get; }
+    }
+    
+    public class QuerystringParameters : ParametersBase<string>, IQuerystringParameters
+    {
+        public QuerystringParameters(HttpRequestMessage request, 
+            RouteDescriptor routeDescriptor, Configuration configuration) : 
+            base(GetParameters(request, routeDescriptor, configuration)) { }
+        
+        private static IEnumerable<KeyValuePair<string, string>> GetParameters(
+            HttpRequestMessage request, RouteDescriptor routeDescriptor, Configuration configuration)
         {
-            return _parameters.GroupBy(x => x.Key, x => x.Value)
-                .Cast<IGrouping<string, object>>().GetEnumerator();
+            var parameters = request.GetQueryNameValuePairs();
+            return configuration.QuerystringParameterDelimiters.Any()
+                ? parameters.SelectMany(x => ParseDelimitedParameters(
+                    x, routeDescriptor, configuration))
+                : parameters;
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        private static IEnumerable<KeyValuePair<string, string>> ParseDelimitedParameters
+            (KeyValuePair<string, string> value, RouteDescriptor routeDescriptor, Configuration configuration)
         {
-            return GetEnumerator();
+            var parameter = routeDescriptor.Parameters.FirstOrDefault(
+                x => x.Name.EqualsUncase(value.Key));
+
+            if (parameter == null || (!parameter.TypeDescriptor.IsArray &&
+                !parameter.TypeDescriptor.IsGenericListCastable))
+                return new[] { value };
+
+            var delimiter = configuration.QuerystringParameterDelimiters
+                .Select(x => x(parameter)).FirstOrDefault(x => x.IsNotNullOrEmpty());
+
+            return delimiter != null && (parameter.TypeDescriptor.IsArray || 
+                    parameter.TypeDescriptor.IsGenericListCastable)
+                ? value.Value.Split(delimiter).ToKeyValuePairs(value.Key)
+                : new[] { value };
         }
     }
 }

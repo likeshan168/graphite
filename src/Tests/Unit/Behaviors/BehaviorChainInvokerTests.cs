@@ -90,6 +90,8 @@ namespace Tests.Unit.Behaviors
             _requestGraph.UnderlyingContainer.Configure(x =>
             {
                 x.For<Logger>().Use(log);
+                x.For<IQuerystringParameters>().Use<QuerystringParameters>();
+                x.For<IUrlParameters>().Use<UrlParameters>();
             });
 
             var requestMessage = _requestGraph.GetHttpRequestMessage();

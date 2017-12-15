@@ -125,6 +125,7 @@
     <Compile Include="Http\IRequestPropertiesProvider.cs" />
     <Compile Include="Http\DelimitedBuffer.cs" />
     <Compile Include="Http\MultipartReader.cs" />
+    <Compile Include="Http\ParametersBase.cs" />
     <Compile Include="Http\TextResult.cs" />
     <Compile Include="Linq\ValueGrouping.cs" />
     <Compile Include="Http\RemoteHost.cs" />
@@ -192,6 +193,7 @@
     <Compile Include="Setup\ActionDsl.cs" />
     <Compile Include="Setup\AuthenticationDsl.cs" />
     <Compile Include="Setup\BehaviorsDsl.cs" />
+    <Compile Include="Setup\HttpDsl.cs" />
     <Compile Include="Setup\BindingDsl.cs" />
     <Compile Include="Setup\ContainerDsl.cs" />
     <Compile Include="Setup\DiagnosticsDsl.cs" />
